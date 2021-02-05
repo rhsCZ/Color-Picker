@@ -1,0 +1,11 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+.vs/
+releases/
+rhscz.pfx
+rhscz.pvk
+sign.sgui
+output/
+colorpicker/colorpicker.aps
