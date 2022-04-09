@@ -1,6 +1,6 @@
 ﻿//{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ generated include file.
-// Used by colorpicker.rc
+// Microsoft Visual C++ vygeneroval soubor zahrnutí.
+// Použito colorpicker.rc
 //
 #define IDD_COLORPICKER_DIALOG          101
 #define IDR_ICON                        128
@@ -16,6 +16,11 @@
 #define IDC_HEXOUT                      1007
 #define IDC_HEX2                        1008
 #define IDC_HEX1                        1009
+#define IDC_RVAL                        1010
+#define IDC_CHECK1                      1011
+#define IDC_LOWERCASE                   1011
+#define IDC_BVAL                        1015
+#define IDC_GVAL                        1016
 #define ID_MENU_MIN                     32771
 #define ID_MENU_MAX                     32772
 #define ID_MENU_EXIT                    32773
@@ -26,7 +31,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32774
-#define _APS_NEXT_CONTROL_VALUE         1010
+#define _APS_NEXT_CONTROL_VALUE         1012
 #define _APS_NEXT_SYMED_VALUE           102
 #endif
 #endif

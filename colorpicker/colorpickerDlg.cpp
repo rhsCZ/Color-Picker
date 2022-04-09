@@ -6,10 +6,14 @@
 #include "framework.h"
 #include "colorpicker.h"
 #include "colorpickerDlg.h"
-#include "afxdialogex.h"
-#include "afxwin.h"
+//#include "afxdialogex.h"
+//#include "afxwin.h"
+#include <sstream>
+#include <iomanip>
+#include <iostream>
+#include <chrono>
 #include <thread>
-#include <fstream>
+//#include <fstream>
 #include <Windows.h>
 template<class TYPE>
 bool RegSetKey(HKEY key, LPSTR keyloc, unsigned long type, REGSAM access, LPSTR name, TYPE indatax);
@@ -32,18 +36,32 @@ VOID CALLBACK FileIOCompletionRoutine(
 	_tprintf(TEXT("Number of bytes:\t%x\n"), dwNumberOfBytesTransfered);
 	g_BytesTransferred = dwNumberOfBytesTransfered;
 }
-#pragma warning( disable:4244)
-#pragma warning(disable:6387)
-#pragma warning(disable:6011)
-#pragma warning(disable:28182)
-#pragma warning(disable:4805)
+#pragma warning( disable:4244 6011 28182 4805 26454)
+//#pragma warning(disable:6387)
+//#pragma warning(disable:6011)
+//#pragma warning(disable:28182)
+//#pragma warning(disable:4805)
 
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
 using namespace std;
-void colorpickerDlg::convertohex(int value, char* buffer)
+void colorpickerDlg::dec2hex(int value, char* buffer) //new also works
+{
+	char tmp[30] = {};
+	stringstream stream;
+	stream.setf(ios::adjustfield | ios::left | ios::hex);
+	if (!lowercaseen)
+	{
+		stream.setf(ios::uppercase);
+	}
+	stream << setfill('0') << setw(2) << hex << value;
+	stream >> tmp;
+	strcpy(buffer, tmp);
+}
+
+/*void colorpickerDlg::dec2hex(int value, char* buffer) //old working
 {
 	int writes=0;
 	char buffs[50] = {};
@@ -61,13 +79,15 @@ void colorpickerDlg::convertohex(int value, char* buffer)
 			{
 				char buf[5] = {};
 				char point = hexarray[rem];
-				sprintf_s(buf, "0%s",&point);
+				sprintf_s(buf, "0%c",point);
 				strcat_s(buffs, buf);
 			}
 			else
 			{
 				char point = hexarray[rem];
-				strcat_s(buffs, &point);
+				char bfr[2];
+				sprintf_s(bfr, "%c", point);
+				strcat_s(buffs, bfr);
 			}
 			writes++;
 			val = val / 16;
@@ -81,11 +101,27 @@ void colorpickerDlg::convertohex(int value, char* buffer)
 			for (int i = 0; i <= writes; i++)
 			{
 				char point = buffs[tmp];
-				strcat_s(buffer,7, &point);
-				tmp--;
+				char bfr[2];
+				sprintf_s(bfr, "%c", point);
+				strcat_s(buffer,7, bfr);
+				if (tmp > 0)
+				{
+					tmp--;
+				}
+				else break;
+				
 			}
 		}
 	}
+}*/
+void colorpickerDlg::hex2dec(char* buffer, int *value) //new also works
+{
+	char tmp[30] = {};
+	int x=0;
+	stringstream stream;
+	stream.setf(ios::adjustfield | ios::left | ios::dec);
+	stream << buffer;
+	stream >> hex >> *value;
 }
 colorpickerDlg::colorpickerDlg(CWnd* pParent /*=nullptr*/)
 	: CDialog(IDD_COLORPICKER_DIALOG, pParent)
@@ -223,6 +259,7 @@ BEGIN_MESSAGE_MAP(colorpickerDlg, CDialog)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_RED, &colorpickerDlg::OnNMCustomdraw)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GREEN, &colorpickerDlg::OnNMCustomdraw)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_BLUE, &colorpickerDlg::OnNMCustomdraw)
+	ON_BN_CLICKED(IDC_LOWERCASE, &colorpickerDlg::OnBnClickedLowercase)
 END_MESSAGE_MAP()
 BOOL colorpickerDlg::OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult)
 {
@@ -321,16 +358,34 @@ BOOL colorpickerDlg::OnInitDialog()
 				trayenable = 0;
 			}
 		}
+		out = RegGetKey(HKEY_CURRENT_USER, "Software\\ColorPicker", REG_DWORD, KEY_ALL_ACCESS | KEY_WOW64_64KEY, "LowerCaseEnable", &outdata);
+		if (out == 2)
+		{
+			indata = 0;
+			RegSetKey(HKEY_CURRENT_USER, "Software\\ColorPicker", REG_DWORD, KEY_ALL_ACCESS | KEY_WOW64_64KEY, "LowerCaseEnable", &indata);
+			lowercaseen = 0;
+		}
+		else if (out == 1)
+		{
+			if (outdata == 1)
+			{
+				lowercaseen = 1;
+			}
+			else
+			{
+				lowercaseen = 0;
+			}
+		}
 	}
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 	TraySetIcon(m_hIcon);
-	TraySetToolTip(L"Steamcloud");
+	TraySetToolTip(L"Color Picker");
 	TraySetMenu(ID_MENU_MINIMIZE);
 	
 	if (colorpickerDlg::IsWindowVisible() != 0)
 	{
-		
+		//GetDlgItem(IDC_RVAL)->SetEventMask(ENM_CHANGE);
 		color = (CMFCButton*)GetDlgItem(IDC_COLORBUTTON);
 		checkbox = (CButton*)GetDlgItem(IDC_MINEN);
 		trayen = (CButton*)GetDlgItem(IDC_TRAYEN);
@@ -339,11 +394,21 @@ BOOL colorpickerDlg::OnInitDialog()
 		blue = (CSliderCtrl*)GetDlgItem(IDC_BLUE);
 		hex1 = (CButton*)GetDlgItem(IDC_HEX1);
 		hex2 = (CButton*)GetDlgItem(IDC_HEX2);
+		rval = (CRichEditCtrl*)GetDlgItem(IDC_RVAL);
+		gval = (CRichEditCtrl*)GetDlgItem(IDC_GVAL);
+		bval = (CRichEditCtrl*)GetDlgItem(IDC_BVAL);
+		lowercase= (CButton*)GetDlgItem(IDC_LOWERCASE);
 		hex1->SetCheck(BST_CHECKED);
 		hex2->SetCheck(BST_UNCHECKED);
 		red->SetRange(0, 255, 1);
 		blue->SetRange(0, 255, 1);
 		green->SetRange(0, 255, 1);
+		rval->SetEventMask(ENM_CHANGE);
+		gval->SetEventMask(ENM_CHANGE);
+		bval->SetEventMask(ENM_CHANGE);
+		SetDlgItemInt(IDC_RVAL,0,FALSE);
+		SetDlgItemInt(IDC_GVAL, 0, FALSE);
+		SetDlgItemInt(IDC_BVAL, 0, FALSE);
 		color->SetFaceColor(RGB(0, 0, 0));
 		SetDlgItemTextA(this->m_hWnd, IDC_HEXOUT, "000000");
 		if (minimizeen)
@@ -353,6 +418,14 @@ BOOL colorpickerDlg::OnInitDialog()
 		else
 		{
 			CheckDlgButton(IDC_MINEN, BST_UNCHECKED);
+		}
+		if (lowercaseen)
+		{
+			CheckDlgButton(IDC_LOWERCASE, BST_CHECKED);
+		}
+		else
+		{
+			CheckDlgButton(IDC_LOWERCASE, BST_UNCHECKED);
 		}
 		if (trayenable)
 		{
@@ -366,6 +439,14 @@ BOOL colorpickerDlg::OnInitDialog()
 		}
 		
 	}
+	treden = true;
+	tgreenen = true;
+	tblueen = true;
+	toutputen = true;
+	tred = thread::thread(&colorpickerDlg::OnEnChangeRval, this);
+	tgreen = thread::thread(&colorpickerDlg::OnEnChangeBval, this);
+	tblue = thread::thread(&colorpickerDlg::OnEnChangeGval, this);
+	toutput = thread::thread(&colorpickerDlg::OnEnChangeHexout, this);
 	init = true;
 	return TRUE;
 }
@@ -405,8 +486,8 @@ HCURSOR colorpickerDlg::OnQueryDragIcon()
 
 void colorpickerDlg::OnBnClickedExit()
 {
+	
 	colorpickerDlg::OnDestroy();
-	exit(2);
 }
 
 void colorpickerDlg::OnBnClickedMinEn()
@@ -480,11 +561,34 @@ int colorpickerDlg::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 void colorpickerDlg::OnDestroy()
 {
-	CDialog::OnDestroy();
+	treden = false;
+	tgreenen = false;
+	tblueen = false;
+	toutputen = false;
+	if (tred.joinable())
+	{
+		tred.join();
+	}
+	if (tgreen.joinable())
+	{
+		tgreen.join();
+	}
+	if (tblue.joinable())
+	{
+		tblue.join();
+	}
+	if (toutput.joinable())
+	{
+		toutput.join();
+	}
+
 	if (m_nidIconData.hWnd && m_nidIconData.uID > 0 && TrayIsVisible())
 	{
 		Shell_NotifyIcon(NIM_DELETE, &m_nidIconData);
 	}
+	//CDialog::OnDestroy();
+	PostQuitMessage(0);
+	//exit(2);
 }
 
 BOOL colorpickerDlg::TrayIsVisible()
@@ -733,6 +837,7 @@ void colorpickerDlg::OnBnClickedHex1()
 		hexmode = 1;
 		hex1->SetCheck(BST_CHECKED);
 		hex2->SetCheck(BST_UNCHECKED);
+		updated = true;
 		OnNMCustomdraw(0, 0);
 	}
 }
@@ -745,6 +850,7 @@ void colorpickerDlg::OnBnClickedHex2()
 		hexmode = 2;
 		hex1->SetCheck(BST_UNCHECKED);
 		hex2->SetCheck(BST_CHECKED);
+		updated = true;
 		OnNMCustomdraw(0, 0);
 	}
 }
@@ -754,34 +860,199 @@ void colorpickerDlg::OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult)
 	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
 	if(init==true)
 	{ 
-	char buffer[30];
-	int rmod = red->GetPos();
-	int gmod = green->GetPos();
-	int bmod = blue->GetPos();
-	color->SetFaceColor(RGB(rmod, gmod, bmod));
-	if (hexmode == 1)
-	{
+		up = false;
+		char buffer[30];
+		int rmod = red->GetPos();
+		int gmod = green->GetPos();
+		int bmod = blue->GetPos();
+		color->SetFaceColor(RGB(rmod, gmod, bmod));
 		char red[7] = {}, green[7] = {}, blue[7] = {};
 		//sprintf(red, "%0X", rmod);
 		//sprintf(green, "%0X", gmod);
 		//sprintf(blue, "%0X", bmod);
-		convertohex(rmod, red);
-		convertohex(gmod, green);
-		convertohex(bmod, blue);
-		sprintf_s(buffer, "%s%s%s", red, green, blue);
+		if ((int)GetDlgItemInt(IDC_RVAL, NULL, FALSE) != rmod)
+		{
+			SetDlgItemInt(IDC_RVAL, rmod, FALSE);
+			updated = true;
+		}
+		if ((int)GetDlgItemInt(IDC_GVAL, NULL, FALSE) != gmod)
+		{
+			SetDlgItemInt(IDC_GVAL, gmod, FALSE);
+			updated = true;
+		}
+		if ((int)GetDlgItemInt(IDC_BVAL, NULL, FALSE) != bmod)
+		{
+			SetDlgItemInt(IDC_BVAL, bmod, FALSE);
+			updated = true;
+		}
+		if(updated)
+		{ 
+			dec2hex(rmod, red);
+			dec2hex(gmod, green);
+			dec2hex(bmod, blue);
+			if (hexmode == 1)
+			{
+				sprintf_s(buffer, "%s%s%s", red, green, blue);
+			}
+			else
+			{
+				sprintf_s(buffer, "0x%s%s%s", red, green, blue);
+			}
+			SetDlgItemTextA(this->m_hWnd, IDC_HEXOUT, buffer);
+			updated = false;
+		}
+		up = true;
+	}
+	//*pResult = 0;
+}
+
+void colorpickerDlg::OnEnChangeHexout()
+{
+	while (treden)
+	{
+		while (!up)
+		{
+			Sleep(30);
+		}
+		int rr = 0, rrr = 0, gg = 0, ggg = 0, bb = 0, bbb = 0;
+		size_t len = 0;
+		rr = red->GetPos();
+		gg = green->GetPos();
+		bb = blue->GetPos();
+		char buffer[60] = {},rt[3] = {},bt[3] = {},gt[3] = {};
+		GetDlgItemTextA(this->m_hWnd,IDC_HEXOUT,buffer,(int)sizeof(buffer));
+		len = strlen(buffer);
+		if ((hexmode == 1 && len==6) || (hexmode == 2 && len == 8))
+		{
+			if (len == 8)
+			{
+				sscanf_s(buffer, "0x%2s%2s%2s", &rt, (unsigned int)sizeof(rt), &gt, (unsigned int)sizeof(gt), &bt, (unsigned int)sizeof(bt));
+			}
+			else
+			{
+				sscanf_s(buffer, "%2s%2s%2s", &rt, (unsigned int)sizeof(rt), &gt, (unsigned int)sizeof(gt), &bt, (unsigned int)sizeof(bt));
+			}
+			hex2dec(rt, &rrr);
+			hex2dec(gt, &ggg);
+			hex2dec(bt, &bbb);
+			if (rr != rrr)
+			{
+				red->SetPos(rrr);
+				updated = true;
+				
+			}
+			if (gg != ggg)
+			{
+				green->SetPos(ggg);
+				updated = true;
+
+			}
+			if (bb != bbb)
+			{
+				blue->SetPos(bbb);
+				updated = true;
+
+			}
+			OnNMCustomdraw(0, 0);
+		}
+		Sleep(80);
+	}
+}
+
+
+void colorpickerDlg::OnEnChangeRval()
+{
+	while (treden)
+	{
+		int color2;
+		UINT color;
+		color = GetDlgItemInt(IDC_RVAL, NULL, FALSE);
+		color2 = red->GetPos();
+		if ((int)color != color2)
+		{
+			if (color > 255)
+			{
+				color = 255;
+				SetDlgItemInt(IDC_RVAL, color, FALSE);
+				red->SetPos((int)color);
+				OnNMCustomdraw(0, 0);
+				
+			}
+			else
+			{
+				red->SetPos((int)color);
+				OnNMCustomdraw(0, 0);
+			}
+		}
+		Sleep(80);
+	}
+}
+
+
+void colorpickerDlg::OnEnChangeGval()
+{
+	while (tgreenen)
+	{
+		int color2;
+		UINT color;
+		color = GetDlgItemInt(IDC_GVAL, NULL, FALSE);
+		color2 = green->GetPos();
+		if ((int)color != color2)
+		{
+			if (color > 255)
+			{
+				color = 255;
+				SetDlgItemInt(IDC_GVAL, color, FALSE);
+				green->SetPos((int)color);
+				OnNMCustomdraw(0, 0);
+			}
+			else
+			{
+				green->SetPos((int)color);
+				OnNMCustomdraw(0, 0);
+			}
+		}
+		Sleep(80);
+	}
+}
+
+
+void colorpickerDlg::OnEnChangeBval()
+{
+	while(tblueen)
+	{
+		UINT color;
+		int color2;
+		color = GetDlgItemInt(IDC_BVAL, NULL, FALSE);
+		color2 = blue->GetPos();
+		if(color != color2)
+		{
+			if (color > 255)
+			{
+				color = 255;
+				SetDlgItemInt(IDC_BVAL, color, FALSE);
+				blue->SetPos((int)color);
+				OnNMCustomdraw(0, 0);
+			}
+			else
+			{
+				blue->SetPos((int)color);
+				OnNMCustomdraw(0, 0);
+			}
+		}
+		Sleep(80);
+	}
+}
+
+
+void colorpickerDlg::OnBnClickedLowercase()
+{
+	if (lowercase->GetCheck() == BST_CHECKED)
+	{
+		lowercaseen = true;
 	}
 	else
 	{
-		char red[7] = {}, green[7] = {}, blue[7] = {};
-		//sprintf(red, "%0X", rmod);
-		//sprintf(green, "%0X", gmod);
-		//sprintf(blue, "%0X", bmod);
-		convertohex(rmod, red);
-		convertohex(gmod, green);
-		convertohex(bmod, blue);
-		sprintf_s(buffer, "0x%s%s%s", red, green, blue);
+		lowercaseen = false;
 	}
-	SetDlgItemTextA(this->m_hWnd, IDC_HEXOUT, buffer);
-	}
-	//*pResult = 0;
 }
